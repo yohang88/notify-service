@@ -1,22 +1,22 @@
 package main
 
 import (
-	"time"
+    "time"
 
-	"github.com/yohang88/notify-service/queue"
+    "github.com/yohang88/notify-service/queue"
 )
 
 func main() {
-	queue.Init("amqp://localhost")
+    queue.Init("amqp://localhost")
 
-	publisher()
+    publisher()
 }
 
 func publisher() {
-	for {
-		if err := queue.Publish("push_message", []byte(`{"num":6.13,"data":["a","b"]}`)); err != nil {
-			panic(err)
-		}
-		time.Sleep(500 * time.Millisecond)
-	}
+    for {
+        if err := queue.Publish("push_message", []byte(`{"num":6.13,"data":["a","b"]}`)); err != nil {
+            panic(err)
+        }
+        time.Sleep(500 * time.Millisecond)
+    }
 }
