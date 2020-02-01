@@ -44,7 +44,7 @@ func createBroadcast(c echo.Context) error {
 
     for _, record := range records {
         // Push to Queues
-        err = queue.Publish("push_message", []byte(`{"phone":`+record+`,"content":`+content+`}`))
+        err = queue.Publish("push_message", []byte(`{"phone":"`+record+`","content":"`+content+`"}`))
 
         if err != nil {
             log.Fatal(err)
