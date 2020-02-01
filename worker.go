@@ -25,7 +25,7 @@ func worker() {
 
     go func() {
         for d := range messages {
-            logrus.WithFields(logrus.Fields{"event_name": "QUEUE_WORKER_WORKING", "event_data": byteToString(d.Body)}).
+            logrus.WithFields(logrus.Fields{"event_name": "QUEUE_WORKER_WORKING", "data": byteToString(d.Body)}).
                 Info("New message.")
 
             d.Ack(false)

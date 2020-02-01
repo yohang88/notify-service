@@ -1,14 +1,15 @@
 package main
 
 import (
+    "archive/zip"
     "log"
     "net/http"
     "strconv"
     "time"
 
     "github.com/labstack/echo"
-
     "github.com/sirupsen/logrus"
+    "github.com/tealeg/xlsx"
     "github.com/yohang88/notify-service/queue"
 )
 
@@ -31,13 +32,44 @@ func main() {
 }
 
 func createBroadcast(c echo.Context) error {
-    err := queue.Publish("push_message", []byte(`{"num":6.13,"data":["a","b"]}`))
+    content := c.FormValue("content")
+
+    // Source
+    file, err := c.FormFile("file")
+    if err != nil {
+        return err
+    }
+
+    src, err := file.Open()
+    if err != nil {
+        return err
+    }
+
+    defer src.Close()
+
+    reader, err := zip.NewReader(src, file.Size)
+    xlFile, err := xlsx.ReadZipReader(reader)
 
     if err != nil {
         log.Fatal(err)
     }
 
-    logrus.WithFields(logrus.Fields{"event_name": "BROADCAST_CREATE"}).Info("Create broadcast")
+    for _, sheet := range xlFile.Sheets {
+        for _, row := range sheet.Rows {
+            for _, cell := range row.Cells {
+                text := cell.String()
+
+                // Push to Queues
+                err = queue.Publish("push_message", []byte(`{"phone":`+text+`,"content":`+content+`}`))
+            }
+        }
+    }
+
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    logrus.WithFields(logrus.Fields{"event_name": "BROADCAST_CREATE", "content": content}).Info("Create broadcast")
 
     return c.NoContent(http.StatusNoContent)
 }
