@@ -1,13 +1,13 @@
 package main
 
 import (
-    "fmt"
-    "time"
-
+    "github.com/sirupsen/logrus"
     "github.com/yohang88/notify-service/queue"
 )
 
 func main() {
+    logrus.SetFormatter(&logrus.JSONFormatter{})
+
     queue.Init("amqp://localhost")
 
     worker()
@@ -25,12 +25,16 @@ func worker() {
 
     go func() {
         for d := range messages {
-            fmt.Println(time.Now().Format("2006-01-02T15:04:05-0700"), byteToString(d.Body))
+            logrus.WithFields(logrus.Fields{"event_name": "QUEUE_WORKER_WORKING", "event_data": byteToString(d.Body)}).
+                Info("New message.")
+
             d.Ack(false)
         }
     }()
 
-    fmt.Println(time.Now().Format("2006-01-02T15:04:05-0700"), "Waiting for messages")
+    logrus.WithFields(logrus.Fields{"event_name": "QUEUE_WORKER_READY"}).
+        Info("Waiting for messages")
+
     <-forever
 }
 

@@ -56,3 +56,17 @@ func Subscribe(qName string) (<-chan amqp.Delivery, func(), error) {
     // return the created channel
     return c, func() { ch.Close() }, err
 }
+
+func Stats(qName string) (int, error) {
+    ch, err := conn.Channel()
+    if err != nil {
+        return 0, err
+    }
+
+    q, err := ch.QueueInspect(qName)
+    if err != nil {
+        return 0, err
+    }
+
+    return q.Messages, err
+}
