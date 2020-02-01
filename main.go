@@ -3,6 +3,7 @@ package main
 import (
     "archive/zip"
     "log"
+    "mime/multipart"
     "net/http"
     "strconv"
     "time"
@@ -33,16 +34,32 @@ func main() {
 
 func createBroadcast(c echo.Context) error {
     content := c.FormValue("content")
-
-    // Source
     file, err := c.FormFile("file")
+
     if err != nil {
         return err
     }
 
+    records := readAndParseXls(file)
+
+    for _, record := range records {
+        // Push to Queues
+        err = queue.Publish("push_message", []byte(`{"phone":`+record+`,"content":`+content+`}`))
+
+        if err != nil {
+            log.Fatal(err)
+        }
+    }
+
+    logrus.WithFields(logrus.Fields{"event_name": "BROADCAST_CREATE", "content": content}).Info("Create broadcast")
+
+    return c.NoContent(http.StatusNoContent)
+}
+
+func readAndParseXls(file *multipart.FileHeader) []string {
     src, err := file.Open()
     if err != nil {
-        return err
+        log.Fatal(err)
     }
 
     defer src.Close()
@@ -54,24 +71,19 @@ func createBroadcast(c echo.Context) error {
         log.Fatal(err)
     }
 
+    var records []string
+
     for _, sheet := range xlFile.Sheets {
         for _, row := range sheet.Rows {
             for _, cell := range row.Cells {
                 text := cell.String()
 
-                // Push to Queues
-                err = queue.Publish("push_message", []byte(`{"phone":`+text+`,"content":`+content+`}`))
+                records = append(records, text)
             }
         }
     }
 
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    logrus.WithFields(logrus.Fields{"event_name": "BROADCAST_CREATE", "content": content}).Info("Create broadcast")
-
-    return c.NoContent(http.StatusNoContent)
+    return records
 }
 
 func publisher() {
