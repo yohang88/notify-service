@@ -2,7 +2,6 @@ package main
 
 import (
     "encoding/json"
-    "fmt"
     "github.com/sirupsen/logrus"
     "github.com/yohang88/notify-service/queue"
     "net/http"
@@ -18,7 +17,7 @@ type Message struct {
 func main() {
     logrus.SetFormatter(&logrus.JSONFormatter{})
 
-    queue.Init("amqp://localhost")
+    queue.Init(os.Getenv("RABBITMQ_URI"))
 
     worker()
 }
@@ -37,14 +36,12 @@ func worker() {
         for d := range messages {
             myJsonString := byteToString(d.Body)
 
-            fmt.Println(myJsonString)
-
             var message Message
             json.Unmarshal([]byte(myJsonString), &message)
 
-            sendSms(message.Phone, message.Content)
+            // sendSms(message.Phone, message.Content)
 
-            logrus.WithFields(logrus.Fields{"event_name": "QUEUE_WORKER_WORKING", "number": message.Phone, "content": message.Content}).
+            logrus.WithFields(logrus.Fields{"event_name": "QUEUE_WORKER_WORKING", "type": "SMS", "phone": message.Phone, "content": message.Content}).
                 Info("New message.")
 
             d.Ack(false)

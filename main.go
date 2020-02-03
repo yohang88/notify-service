@@ -5,6 +5,7 @@ import (
     "log"
     "mime/multipart"
     "net/http"
+    "os"
     "strconv"
     "time"
 
@@ -17,7 +18,8 @@ import (
 func main() {
     logrus.SetFormatter(&logrus.JSONFormatter{})
 
-    queue.Init("amqp://localhost")
+    queue.Init(os.Getenv("RABBITMQ_URI"))
+
     // publisher()
 
     e := echo.New()
@@ -28,11 +30,27 @@ func main() {
     })
 
     e.POST("/broadcasts", createBroadcast)
+    e.POST("/broadcasts/bulk", createBroadcastBulk)
 
     e.Logger.Fatal(e.Start(":8000"))
 }
 
 func createBroadcast(c echo.Context) error {
+    content := c.FormValue("content")
+    phone := c.FormValue("phone")
+
+    err := queue.Publish("push_message", []byte(`{"phone":"`+phone+`","content":"`+content+`"}`))
+
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    logrus.WithFields(logrus.Fields{"event_name": "BROADCAST_CREATE", "phone": phone, "content": content}).Info("Create broadcast")
+
+    return c.NoContent(http.StatusNoContent)
+}
+
+func createBroadcastBulk(c echo.Context) error {
     content := c.FormValue("content")
     file, err := c.FormFile("file")
 
@@ -51,7 +69,7 @@ func createBroadcast(c echo.Context) error {
         }
     }
 
-    logrus.WithFields(logrus.Fields{"event_name": "BROADCAST_CREATE", "content": content}).Info("Create broadcast")
+    logrus.WithFields(logrus.Fields{"event_name": "BROADCAST_BULK_CREATE", "content": content}).Info("Create bulk broadcast")
 
     return c.NoContent(http.StatusNoContent)
 }
