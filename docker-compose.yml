@@ -1,0 +1,19 @@
+version: "3"
+
+services:
+  main:
+    image: yohang/notify-service:latest
+    restart: unless-stopped
+    environment:
+      - RABBITMQ_URI=amqp://rabbitmq
+    ports:
+      - "8000:8000"
+
+  worker:
+    image: yohang/notify-service:worker-latest
+    restart: unless-stopped
+    environment:
+      - RABBITMQ_URI=amqp://rabbitmq
+
+  rabbitmq:
+    image: rabbitmq:3
